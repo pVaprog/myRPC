@@ -20,16 +20,16 @@
 #include <json-c/json.h>
 #include "../libmysyslog/mysyslog.h"
 
-/* Параметры, задаваемые через конфигурацию или аргументы */
+//Параметры, задаваемые через конфигурацию или аргументы
 static int server_port = 12345;
 static int use_tcp = 1;  // 1 = TCP (SOCK_STREAM), 0 = UDP (SOCK_DGRAM)
 
-/* Массив разрешённых пользователей */
+//Массив разрешённых пользователей
 static char **allowed_users = NULL;
 static size_t allowed_count = 0;
 static size_t allowed_capacity = 0;
 
-/* Свободить список разрешённых пользователей */
+//Освободить список разрешённых пользователей
 static void free_allowed_users() {
     if (allowed_users) {
         for (size_t i = 0; i < allowed_count; ++i) {
@@ -42,10 +42,10 @@ static void free_allowed_users() {
     }
 }
 
-/* Добавить имя пользователя в список разрешённых */
+//Добавить имя пользователя в список разрешённых
 static void add_allowed_user(const char *username) {
     if (!username || username[0] == '\0') return;
-    // Расширить массив при необходимости
+    //Расширить массив при необходимости
     if (allowed_count == allowed_capacity) {
         size_t new_cap = (allowed_capacity == 0 ? 10 : allowed_capacity * 2);
         char **new_list = realloc(allowed_users, new_cap * sizeof(char*));
@@ -56,7 +56,7 @@ static void add_allowed_user(const char *username) {
         allowed_users = new_list;
         allowed_capacity = new_cap;
     }
-    // Копируем имя
+    //Копируем имя
     allowed_users[allowed_count] = strdup(username);
     if (allowed_users[allowed_count] == NULL) {
         mysyslog(LOG_LEVEL_ERROR, "Ошибка: недостаточно памяти для имени пользователя '%s'", username);
@@ -65,7 +65,7 @@ static void add_allowed_user(const char *username) {
     allowed_count++;
 }
 
-/* Загрузить файл разрешённых пользователей (users.conf) */
+//Загрузить файл разрешённых пользователей (users.conf)
 static int load_allowed_users(const char *filename) {
     FILE *f = fopen(filename, "r");
     if (!f) {
@@ -73,33 +73,33 @@ static int load_allowed_users(const char *filename) {
     }
     char line[256];
     while (fgets(line, sizeof(line), f)) {
-        // Убираем конец строки
+        //Убираем конец строки
         size_t len = strlen(line);
         if (len == 0) continue;
         if (line[len-1] == '\n' || line[len-1] == '\r') {
             line[len-1] = '\0';
             len--;
         }
-        // Пропустить пустые строки
+        //Пропустить пустые строки
         char *ptr = line;
         while (isspace((unsigned char)*ptr)) ptr++;
         if (*ptr == '\0') continue;
-        // Пропустить комментарии
+        //Пропустить комментарии
         if (*ptr == '#') continue;
-        // Обрезаем пробелы в конце
+        //Обрезаем пробелы в конце
         char *end = ptr + strlen(ptr) - 1;
         while(end > ptr && isspace((unsigned char)*end)) {
             *end = '\0';
             end--;
         }
-        // Добавить пользователя
+        //Добавить пользователя
         add_allowed_user(ptr);
     }
     fclose(f);
     return 0;
 }
 
-/* Загрузить конфигурационный файл myRPC.conf */
+//Загрузить конфигурационный файл myRPC.conf
 static void load_config(const char *filename) {
     FILE *f = fopen(filename, "r");
     if (!f) {
@@ -108,18 +108,18 @@ static void load_config(const char *filename) {
     }
     char line[256];
     while (fgets(line, sizeof(line), f)) {
-        // Удаляем перевод строки
+        //Удаляем перевод строки
         size_t len = strlen(line);
         if (len == 0) continue;
         if (line[len-1] == '\n' || line[len-1] == '\r') {
             line[len-1] = '\0';
         }
-        // Пропускаем начальные пробелы
+        //Пропускаем начальные пробелы
         char *ptr = line;
         while (isspace((unsigned char)*ptr)) ptr++;
         if (*ptr == '\0') continue;
         if (*ptr == '#') continue; // комментарий
-        // Ищем разделитель '='
+        //Ищем разделитель '='
         char *eq = strchr(ptr, '=');
         if (!eq) {
             mysyslog(LOG_LEVEL_WARNING, "Некорректная строка в конфигурации: \"%s\"", ptr);
@@ -128,23 +128,23 @@ static void load_config(const char *filename) {
         *eq = '\0';
         char *key = ptr;
         char *value = eq + 1;
-        // Удаляем пробелы вокруг ключа
+        //Удаляем пробелы вокруг ключа
         while (isspace((unsigned char)*key)) key++;
         char *kend = key + strlen(key) - 1;
         while (kend > key && isspace((unsigned char)*kend)) {
             *kend = '\0';
             kend--;
         }
-        // Удаляем пробелы вокруг значения
+        //Удаляем пробелы вокруг значения
         while (isspace((unsigned char)*value)) value++;
         char *vend = value + strlen(value) - 1;
         while (vend > value && isspace((unsigned char)*vend)) {
             *vend = '\0';
             vend--;
         }
-        // Преобразуем ключ в нижний регистр для сравнения
+        //Преобразуем ключ в нижний регистр для сравнения
         for (char *p = key; *p; ++p) *p = tolower((unsigned char)*p);
-        // Обработка известных опций
+        //обработка известных опций
         if (strcmp(key, "port") == 0) {
             int port_val = atoi(value);
             if (port_val > 0 && port_val < 65536) {
@@ -153,7 +153,7 @@ static void load_config(const char *filename) {
                 mysyslog(LOG_LEVEL_WARNING, "Некорректное значение порта в конфигурации: %s", value);
             }
         } else if (strcmp(key, "protocol") == 0) {
-            // поддерживаем значения "tcp" или "udp"
+            //поддерживаем значения "tcp" или "udp"
             for (char *p = value; *p; ++p) *p = tolower((unsigned char)*p);
             if (strcmp(value, "tcp") == 0 || strcmp(value, "stream") == 0) {
                 use_tcp = 1;
@@ -173,17 +173,17 @@ static void load_config(const char *filename) {
    request_text - строка JSON с запросом
    client_ip - строка с IP-адресом клиента (для логирования) */
 static json_object* process_request(const char *request_text, const char *client_ip) {
-    // Парсим JSON-запрос
+    //Парсим JSON-запрос
     json_object *req_obj = json_tokener_parse(request_text);
     if (!req_obj) {
         mysyslog(LOG_LEVEL_WARNING, "Получен некорректный JSON-запрос от клиента %s", client_ip ? client_ip : "(неизвестно)");
-        // Формируем ответ с ошибкой
+        //Формируем ответ с ошибкой
         json_object *resp_err = json_object_new_object();
         json_object_object_add(resp_err, "error", json_object_new_string("Неверный формат JSON"));
         return resp_err;
     }
 
-    // Получаем поля "user" и "command"
+    //Получаем поля "user" и "command"
     json_object *juser = NULL;
     json_object *jcmd = NULL;
     const char *user = NULL;
@@ -202,7 +202,7 @@ static json_object* process_request(const char *request_text, const char *client
         return resp_err;
     }
 
-    // Проверка пользователя
+    //Проверка пользователя
     int allowed = 0;
     for (size_t i = 0; i < allowed_count; ++i) {
         if (strcmp(allowed_users[i], user) == 0) {
@@ -224,7 +224,7 @@ static json_object* process_request(const char *request_text, const char *client
              (client_ip ? client_ip : ""),
              command);
 
-    // Подготовка временных файлов для вывода
+    //Подготовка временных файлов для вывода
     char tmpOut[] = "/tmp/myrpc_stdoutXXXXXX";
     char tmpErr[] = "/tmp/myrpc_stderrXXXXXX";
     int fd_out = mkstemp(tmpOut);
@@ -245,13 +245,13 @@ static json_object* process_request(const char *request_text, const char *client
         json_object_object_add(resp_err, "error", json_object_new_string("Внутренняя ошибка сервера (stderr)"));
         return resp_err;
     }
-    // Закрываем файлы, чтобы shell мог их использовать
+    //Закрываем файлы, чтобы можно было их использовать
     close(fd_out);
     close(fd_err);
 
-    // Формируем команду с перенаправлением вывода
+    //Формируем команду с перенаправлением вывода
     size_t cmd_len = strlen(command);
-    // Дополнительное место: для ' > tmpOut 2> tmpErr' и кавычек - примерно strlen(tmpOut)+strlen(tmpErr)+10
+    //Дополнительное место: для ' > tmpOut 2> tmpErr' и кавычек - примерно strlen(tmpOut)+strlen(tmpErr)+10
     size_t buf_size = cmd_len + strlen(tmpOut) + strlen(tmpErr) + 20;
     char *shell_cmd = malloc(buf_size);
     if (!shell_cmd) {
@@ -263,29 +263,29 @@ static json_object* process_request(const char *request_text, const char *client
         json_object_object_add(resp_err, "error", json_object_new_string("Внутренняя ошибка сервера (alloc)"));
         return resp_err;
     }
-    // Используем shell для выполнения команды
+    //Используем shell для выполнения команды
     snprintf(shell_cmd, buf_size, "%s > %s 2> %s", command, tmpOut, tmpErr);
 
-    // Выполняем команду
+    //Выполняем команду
     int sys_ret = system(shell_cmd);
     free(shell_cmd);
     json_object_put(req_obj); // больше не нужен входной JSON
-    // Подготовка JSON ответа
+    //Подготовка JSON ответа
     json_object *resp_obj = json_object_new_object();
     if (sys_ret == -1) {
-        // Ошибка запуска shell
+        //Ошибка запуска shell
         mysyslog(LOG_LEVEL_ERROR, "Не удалось запустить shell для выполнения команды");
         json_object_object_add(resp_obj, "error", json_object_new_string("Ошибка запуска команды"));
     } else {
-        // Определяем код возврата
+        //Определяем код возврата
         int exit_code = -1;
         if (WIFEXITED(sys_ret)) {
             exit_code = WEXITSTATUS(sys_ret);
         } else if (WIFSIGNALED(sys_ret)) {
-            // если процесс был завершен сигналом
+            //если процесс был завершен сигналом
             exit_code = 128 + WTERMSIG(sys_ret);
         }
-        // Читаем содержимое временных файлов
+        //Читаем содержимое временных файлов
         FILE *f_out = fopen(tmpOut, "rb");
         FILE *f_err = fopen(tmpErr, "rb");
         if (!f_out || !f_err) {
@@ -294,7 +294,7 @@ static json_object* process_request(const char *request_text, const char *client
             if (f_err) fclose(f_err);
             json_object_object_add(resp_obj, "error", json_object_new_string("Ошибка чтения результатов команды"));
         } else {
-            // Получаем размер stdout
+            //Получаем размер stdout
             struct stat st;
             if (stat(tmpOut, &st) == 0) {
                 long fsize = st.st_size;
@@ -311,7 +311,7 @@ static json_object* process_request(const char *request_text, const char *client
             } else {
                 json_object_object_add(resp_obj, "stdout", json_object_new_string(""));
             }
-            // Получаем размер stderr
+            //Получаем размер stderr
             if (stat(tmpErr, &st) == 0) {
                 long fsize = st.st_size;
                 char *err_buf = (char*)malloc(fsize + 1);
@@ -327,20 +327,20 @@ static json_object* process_request(const char *request_text, const char *client
             } else {
                 json_object_object_add(resp_obj, "stderr", json_object_new_string(""));
             }
-            // Добавляем код возврата
+            //Добавляем код возврата
             json_object_object_add(resp_obj, "exit_code", json_object_new_int(exit_code));
             fclose(f_out);
             fclose(f_err);
         }
     }
-    // Удаляем временные файлы
+    //Удаляем временные файлы
     unlink(tmpOut);
     unlink(tmpErr);
 
     return resp_obj;
 }
 
-/* Основной цикл работы сервера в TCP-режиме */
+//Основной цикл работы сервера в TCP-режиме
 static int run_tcp_server() {
     int sock_listen;
     struct sockaddr_in srv_addr;
@@ -349,7 +349,7 @@ static int run_tcp_server() {
         mysyslog(LOG_LEVEL_ERROR, "Не удалось создать сокет: %s", strerror(errno));
         return -1;
     }
-    // Повторно использовать порт сразу после закрытия
+    //Повторно использовать порт сразу после закрытия
     int opt = 1;
     setsockopt(sock_listen, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
@@ -380,20 +380,20 @@ static int run_tcp_server() {
             mysyslog(LOG_LEVEL_ERROR, "Ошибка при принятии соединения: %s", strerror(errno));
             break;
         }
-        // Получаем строку с адресом клиента
+        //Получаем строку с адресом клиента
         char client_ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &cli_addr.sin_addr, client_ip, sizeof(client_ip));
         int client_port = ntohs(cli_addr.sin_port);
         mysyslog(LOG_LEVEL_INFO, "Клиент %s:%d подключен", client_ip, client_port);
 
-        // Чтение запроса
+        //Чтение запроса
         char *req_buffer = NULL;
         size_t req_len = 0;
         char tmp_buf[1024];
         ssize_t n;
-        // Читаем до закрытия сокета клиентом
+        //Читаем до закрытия сокета клиентом
         while ((n = recv(sock_client, tmp_buf, sizeof(tmp_buf), 0)) > 0) {
-            // Расширяем буфер запроса
+            //Расширяем буфер запроса
             char *newbuf = realloc(req_buffer, req_len + n + 1);
             if (!newbuf) {
                 mysyslog(LOG_LEVEL_ERROR, "Недостаточно памяти для буфера запроса");
@@ -413,19 +413,19 @@ static int run_tcp_server() {
             continue;
         }
         if (!req_buffer) {
-            // Если буфер пустой (например, клиент отключился сразу)
+            //Если буфер пустой (например, клиент отключился сразу)
             mysyslog(LOG_LEVEL_WARNING, "Пустой запрос от %s:%d", client_ip, client_port);
             close(sock_client);
             continue;
         }
 
-        // Обрабатываем запрос
+        //Обрабатываем запрос
         json_object *resp = process_request(req_buffer, client_ip);
         free(req_buffer);
-        // Преобразуем JSON-объект ответа в строку
+        //Преобразуем JSON-объект ответа в строку
         const char *resp_str = json_object_to_json_string_ext(resp, JSON_C_TO_STRING_PLAIN);
         size_t resp_len = strlen(resp_str);
-        // Отправляем ответ клиенту
+        //Отправляем ответ клиенту
         ssize_t sent = 0;
         while ((size_t)sent < resp_len) {
             ssize_t m = send(sock_client, resp_str + sent, resp_len - sent, 0);
@@ -435,7 +435,7 @@ static int run_tcp_server() {
             }
             sent += m;
         }
-        // Завершаем соединение
+        //Завершаем соединение
         close(sock_client);
         json_object_put(resp);
         mysyslog(LOG_LEVEL_INFO, "Соединение с клиентом %s:%d закрыто", client_ip, client_port);
@@ -445,7 +445,7 @@ static int run_tcp_server() {
     return 0;
 }
 
-/* Основной цикл работы сервера в UDP-режиме */
+//Основной цикл работы сервера в UDP-режиме
 static int run_udp_server() {
     int sockfd;
     struct sockaddr_in srv_addr;
@@ -476,16 +476,16 @@ static int run_udp_server() {
             break;
         }
         buffer[n] = '\0';
-        // Получаем адрес клиента
+        //Получаем адрес клиента
         char client_ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &cli_addr.sin_addr, client_ip, sizeof(client_ip));
         int client_port = ntohs(cli_addr.sin_port);
         mysyslog(LOG_LEVEL_INFO, "Получен UDP-запрос от %s:%d (%zd байт)", client_ip, client_port, n);
-        // Обработка запроса
+        //Обработка запроса
         json_object *resp = process_request(buffer, client_ip);
         const char *resp_str = json_object_to_json_string_ext(resp, JSON_C_TO_STRING_PLAIN);
         size_t resp_len = strlen(resp_str);
-        // Отправляем ответ
+        //Отправляем ответ
         ssize_t sent = sendto(sockfd, resp_str, resp_len, 0, (struct sockaddr*)&cli_addr, cli_len);
         if (sent < 0) {
             mysyslog(LOG_LEVEL_ERROR, "Ошибка отправки UDP-ответа клиенту %s:%d: %s", client_ip, client_port, strerror(errno));
@@ -499,12 +499,12 @@ static int run_udp_server() {
 }
 
 int main(int argc, char *argv[]) {
-    // Инициализация системы логирования
+    //Инициализация системы логирования
     mysyslog_init("myRPC-server");
 
-    // Игнорируем сигнал SIGPIPE, чтобы не завершаться при разрыве соединений
+    //Игнорируем сигнал SIGPIPE, чтобы не завершаться при разрыве соединений
     signal(SIGPIPE, SIG_IGN);
-    // Загрузка конфигурации и списка разрешенных пользователей
+    //Загрузка конфигурации и списка разрешенных пользователей
     const char *conf_path1 = "myRPC.conf";
     const char *conf_path2 = "/etc/myRPC.conf";
     FILE *fconf = fopen(conf_path1, "r");
@@ -520,7 +520,7 @@ int main(int argc, char *argv[]) {
             mysyslog(LOG_LEVEL_WARNING, "Конфигурационный файл не найден, используются значения по умолчанию.");
         }
     }
-    // Разбор аргументов командной строки
+    //Разбор аргументов командной строки
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--port") == 0 || strcmp(argv[i], "-p") == 0) {
             if (i + 1 < argc) {
@@ -549,7 +549,7 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
     }
-    // Загрузка списка разрешённых пользователей
+    //Загрузка списка разрешённых пользователей
     const char *users_path1 = "users.conf";
     const char *users_path2 = "/etc/users.conf";
     if (load_allowed_users(users_path1) < 0) {
@@ -562,10 +562,10 @@ int main(int argc, char *argv[]) {
     if (allowed_count == 0) {
         mysyslog(LOG_LEVEL_WARNING, "Внимание: список разрешённых пользователей пуст. Ни один пользователь не сможет выполнять команды.");
     }
-    // Выводим информацию о выбранном режиме
+    //Выводим информацию о выбранном режиме
     mysyslog(LOG_LEVEL_INFO, "Запуск сервера (порт %d, режим %s)", server_port, use_tcp ? "TCP" : "UDP");
 
-    // Запускаем соответствующий режим сервера
+    //Запускаем соответствующий режим сервера
     int result;
     if (use_tcp) {
         result = run_tcp_server();
@@ -573,9 +573,9 @@ int main(int argc, char *argv[]) {
         result = run_udp_server();
     }
 
-    // Освобождаем список пользователей
+    //Освобождаем список пользователей
     free_allowed_users();
-    // Завершаем систему логирования
+    //Завершаем систему логирования
     mysyslog_close();
     return (result == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }

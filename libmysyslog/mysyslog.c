@@ -4,9 +4,9 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-/* Глобальные (статические) переменные для настроек логирования */
+//Глобальные (статические) переменные для настроек логирования
 static const char *log_identity = NULL;
-static int log_to_syslog = 0;  /* Флаг использования системного syslog (0 - вывод в stderr) */
+static int log_to_syslog = 0;  //Флаг использования системного syslog (0 - вывод в stderr)
 
 #ifdef linux
 #include <syslog.h>
@@ -14,18 +14,18 @@ static int log_to_syslog = 0;  /* Флаг использования систе
 
 void mysyslog_init(const char *identity) {
     log_identity = identity;
-    // Если нужно, можно добавить определение, использовать ли системный syslog.
-    // Пока что будем выводить сообщения на stderr.
+    //Если нужно, можно добавить определение, использовать ли системный syslog.
+    //Пока что будем выводить сообщения на stderr.
     log_to_syslog = 0;
 #ifdef linux
-    // Можно раскомментировать следующую строку, чтобы использовать системный журнал:
-    // openlog(log_identity, LOG_PID | LOG_CONS, LOG_USER);
+    //Можно раскомментировать следующую строку, чтобы использовать системный журнал:
+    //openlog(log_identity, LOG_PID | LOG_CONS, LOG_USER);
 #endif
 }
 
 void mysyslog_close(void) {
 #ifdef linux
-    // Если использовали системный syslog, закрываем.
+    //Если использовали системный syslog, закрываем.
     if (log_to_syslog) {
         closelog();
     }
@@ -33,7 +33,7 @@ void mysyslog_close(void) {
     log_identity = NULL;
 }
 
-/* Приватная функция для получения текущего времени в виде строки */
+//Приватная функция для получения текущего времени в виде строки
 static void get_current_time(char *buffer, size_t buflen) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -48,7 +48,7 @@ void mysyslog(LogLevel level, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
 
-    // Формируем префикс сообщения по уровню
+    //Формируем префикс сообщения по уровню
     const char *level_str = "";
     switch (level) {
         case LOG_LEVEL_DEBUG:   level_str = "ОТЛАДКА"; break;
@@ -75,7 +75,7 @@ void mysyslog(LogLevel level, const char *fmt, ...) {
         syslog(priority, "%s", msgbuf);
 #endif
     } else {
-        // Выводим лог на stderr
+        //Выводим лог на stderr
         fprintf(stderr, "%s [%s] ", time_str, level_str);
         if (log_identity) {
             fprintf(stderr, "%s: ", log_identity);

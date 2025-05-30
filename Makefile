@@ -18,7 +18,7 @@ clean:
 deb: all
 	@echo "Подготовка пакета DEB..."
 	@rm -rf pkg
-	@mkdir -p pkg/DEBIAN pkg/usr/bin pkg/etc/myRPC pkg/usr/share/doc/myRPC
+	@mkdir -p pkg/DEBIAN pkg/usr/bin pkg/etc/myRPC
 	@cp client/myRPC-client pkg/usr/bin/
 	@cp server/myRPC-server pkg/usr/bin/
 	@# Сжатие бинарных файлов (необязательно), удаляем символы отладки
@@ -34,11 +34,11 @@ deb: all
 	@echo "Section: base" >> pkg/DEBIAN/control
 	@echo "Priority: optional" >> pkg/DEBIAN/control
 	@echo "Architecture: amd64" >> pkg/DEBIAN/control
-	@echo "Depends: libjson-c5 (>= 0.13)" >> pkg/DEBIAN/control
-	@echo "Maintainer: Example Maintainer <maintainer@example.com>" >> pkg/DEBIAN/control
+	@echo "Depends: libjson-c-dev" >> pkg/DEBIAN/control
+	@echo "Maintainer: Maintainer <pva082005@gmail.com>" >> pkg/DEBIAN/control
 	@echo "Description: myRPC - удаленное выполнение команд через JSON" >> pkg/DEBIAN/control
-	@echo " myRPC предоставляет клиент-серверную систему для удаленного выполнения команд." >> pkg/DEBIAN/control
-	@echo " Запросы и ответы передаются в формате JSON с использованием библиотеки json-c." >> pkg/DEBIAN/control
+	@echo "myRPC предоставляет клиент-серверную систему для удаленного выполнения команд." >> pkg/DEBIAN/control
+	@echo "Запросы и ответы передаются в формате JSON с использованием библиотеки json-c." >> pkg/DEBIAN/control
 	# Построение деб-пакета
 	@dpkg-deb --build pkg myrpc_1.0-1_amd64.deb
 	@echo "DEB-пакет myrpc_1.0-1_amd64.deb создан"
