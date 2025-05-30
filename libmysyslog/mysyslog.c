@@ -7,6 +7,7 @@
 //Глобальные (статические) переменные для настроек логирования
 static const char *log_identity = NULL;
 static int log_to_syslog = 0;  //Флаг использования системного syslog (0 - вывод в stderr)
+static FILE *log_file = NULL;
 
 #ifdef linux
 #include <syslog.h>
@@ -14,22 +15,32 @@ static int log_to_syslog = 0;  //Флаг использования систе�
 
 void mysyslog_init(const char *identity) {
     log_identity = identity;
-    //Если нужно, можно добавить определение, использовать ли системный syslog.
-    //Пока что будем выводить сообщения на stderr.
+    //будем выводить сообщения на stderr.
     log_to_syslog = 0;
+
+    //Открываем файл логов в режиме добавления
+    log_file = fopen("myRPC.log", "a");
+    if (!log_file) {
+        fprintf(stderr, "Не удалось открыть лог-файл: %s\n", strerror(errno));
+    }
+
 #ifdef linux
-    //Можно раскомментировать следующую строку, чтобы использовать системный журнал:
+    //использовать системный журнал:
     //openlog(log_identity, LOG_PID | LOG_CONS, LOG_USER);
 #endif
 }
 
 void mysyslog_close(void) {
 #ifdef linux
-    //Если использовали системный syslog, закрываем.
+    //Если системный syslog, закрываем.
     if (log_to_syslog) {
         closelog();
     }
 #endif
+    if (log_file) {
+        fclose(log_file);
+        log_file = NULL;
+    }
     log_identity = NULL;
 }
 
@@ -60,29 +71,23 @@ void mysyslog(LogLevel level, const char *fmt, ...) {
     char time_str[64];
     get_current_time(time_str, sizeof(time_str));
 
-    if (log_to_syslog) {
-#ifdef linux
-        int priority;
-        switch (level) {
-            case LOG_LEVEL_DEBUG:   priority = LOG_DEBUG; break;
-            case LOG_LEVEL_INFO:    priority = LOG_INFO; break;
-            case LOG_LEVEL_WARNING: priority = LOG_WARNING; break;
-            case LOG_LEVEL_ERROR:   priority = LOG_ERR; break;
-            default:                priority = LOG_INFO; break;
-        }
-        char msgbuf[1024];
-        vsnprintf(msgbuf, sizeof(msgbuf), fmt, args);
-        syslog(priority, "%s", msgbuf);
-#endif
-    } else {
-        //Выводим лог на stderr
-        fprintf(stderr, "%s [%s] ", time_str, level_str);
-        if (log_identity) {
-            fprintf(stderr, "%s: ", log_identity);
-        }
-        vfprintf(stderr, fmt, args);
-        fprintf(stderr, "\n");
-        fflush(stderr);
+    //Пишем в stderr
+    fprintf(stderr, "%s [%s] ", time_str, level_str);
+    if (log_identity) fprintf(stderr, "%s: ", log_identity);
+    vfprintf(stderr, fmt, args);
+    fprintf(stderr, "\n");
+    fflush(stderr);
+
+    //Пишем в лог-файл (если открыт)
+    if (log_file) {
+        va_list args_copy;
+        va_copy(args_copy, args);
+        fprintf(log_file, "%s [%s] ", time_str, level_str);
+        if (log_identity) fprintf(log_file, "%s: ", log_identity);
+        vfprintf(log_file, fmt, args_copy);
+        fprintf(log_file, "\n");
+        fflush(log_file);
+        va_end(args_copy);
     }
 
     va_end(args);
